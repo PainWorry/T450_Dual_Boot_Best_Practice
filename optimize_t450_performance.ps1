@@ -67,12 +67,12 @@ if ($DryRun) {
 # 3. Windows Defender CPU & Real-Time Inspection Tuning
 Write-AuditLog "--- Step 2: Windows Defender CPU Mitigation ---"
 if ($DryRun) {
-    Write-AuditLog "[DRY-RUN] Would set Defender CPU limit to 20% (Set-MpPreference -ScanAvgCPUMultithreaded 20)"
+    Write-AuditLog "[DRY-RUN] Would set Defender CPU limit to 20% (Set-MpPreference -ScanAvgCPULoadFactor 20)"
     Write-AuditLog "[DRY-RUN] Would add MsMpEng.exe to Defender process exclusions"
     Write-AuditLog "[DRY-RUN] Would add Opera cache directory to Defender path exclusions"
 } else {
     try {
-        Set-MpPreference -ScanAvgCPUMultithreaded 20
+        Set-MpPreference -ScanAvgCPULoadFactor 20
         Write-AuditLog "Windows Defender scan CPU cap set to 20%."
 
         Add-MpPreference -ExclusionProcess "MsMpEng.exe"

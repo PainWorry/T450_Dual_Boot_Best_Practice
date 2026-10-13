@@ -58,7 +58,7 @@ if ($DryRun) {
     Write-AuditLog "[DRY-RUN] Would remove Defender exclusions for MsMpEng.exe and Opera"
 } else {
     try {
-        Set-MpPreference -ScanAvgCPUMultithreaded 50
+        Set-MpPreference -ScanAvgCPULoadFactor 50
         Write-AuditLog "Reset Defender scan CPU cap to 50% (default)."
 
         Remove-MpPreference -ExclusionProcess "MsMpEng.exe" -ErrorAction SilentlyContinue
