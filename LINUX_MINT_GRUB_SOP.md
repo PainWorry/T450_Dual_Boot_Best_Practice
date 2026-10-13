@@ -1,31 +1,58 @@
 # Standard Operating Procedure (SOP): GRUB Dual-Boot Setup & Default OS Switching
 
 ## 1. Objective
-Establish and maintain a resilient GRUB2 dual-boot bootloader on the ThinkPad T450 primary drive (`/dev/sda`). Provides complete, step-by-step procedures to toggle default boot targets between **Linux Mint** and **Windows 10**, configure countdown timers, or enable the dynamic **"Remember Last Booted OS"** mode.
+Establish and maintain a resilient GRUB2 dual-boot bootloader on the primary drive (`/dev/sda`). Provides complete, step-by-step procedures to toggle default boot targets between **Linux Mint** and **Windows 10**, configure countdown timers, or enable the dynamic **"Remember Last Booted OS"** mode.
 
 ---
 
-## 2. Accessing This Document From Linux Mint
-When booted into Linux Mint:
+## 2. Accessing This Repository & Documentation
+
+### Option A: Direct Clone in Linux Mint (Recommended - Zero Windows Dependency)
+In Linux Mint Terminal (`Ctrl + Alt + T`), clone this repository directly:
+```bash
+git clone https://github.com/PainWorry/T450_Dual_Boot_Best_Practice.git
+cd T450_Dual_Boot_Best_Practice
+```
+All SOPs and scripts are now available locally in your Linux home directory.
+
+### Option B: Accessing From Mounted Windows NTFS Drive
+If the repository was already cloned/downloaded to Windows:
 1. Open the file manager (**Nemo**).
-2. Look at the left sidebar under **Devices** for your Windows drive (typically labelled `236 GB Volume` or `Windows`).
+2. Look at the left sidebar under **Devices** for your Windows partition (e.g. `Windows` or `Volume`).
 3. Click to mount it.
-4. Navigate to:
+4. Navigate to your cloned or downloaded folder:
    ```text
-   /media/<username>/<UUID>/Users/herre/Desktop/ThinkPad_T450_DualBoot_and_Tuning_Guide/
-   ```
-5. Open this `LINUX_MINT_GRUB_SOP.md` file in **Xed** (default text editor) or view it in terminal:
-   ```bash
-   cat "/media/$USER/"*"/Users/herre/Desktop/ThinkPad_T450_DualBoot_and_Tuning_Guide/LINUX_MINT_GRUB_SOP.md"
+   /media/<username>/<UUID>/Users/<your-windows-username>/.../T450_Dual_Boot_Best_Practice/
    ```
 
 ---
 
-## 3. Initial Bootloader Installation (Run Once in Linux Mint)
-To make GRUB the master bootloader so you never have to press `F12` on startup:
+## 3. Diagnostic: Do You Already See the GRUB Black Screen on Boot?
+
+If you already see the GNU GRUB menu (black screen with white text) on startup without pressing `F12`:
+
+### Test 1: Does it have an automatic countdown timer?
+- Look at the bottom of the screen.
+- **If it shows a countdown** (e.g. *"The highlighted entry will be executed automatically in X seconds"*), and boots into your default OS automatically:
+  👉 **Your bootloader is already fully operational.** You do not need to reinstall GRUB.
+- **If it stays on that screen indefinitely** until you manually press Enter:
+  👉 Run the 1-line timer update in Section 5 below to add a 5-second countdown.
+
+### Test 2: Does it list Windows 10?
+- Use the **Down Arrow** to highlight **Windows Boot Manager (on /dev/sda2)** and press **Enter**.
+- **If Windows 10 boots up normally**:
+  👉 **You never need to press F12 again.** You can use this menu to boot Windows or Linux anytime.
+- **If Windows 10 is missing from the menu**:
+  👉 Run `echo "GRUB_DISABLE_OS_PROBER=false" | sudo tee -a /etc/default/grub && sudo update-grub`.
+
+---
+
+## 4. Initial Bootloader Installation (Run Once if GRUB Does Not Appear)
+
+If your machine bypasses GRUB entirely on cold boot and boots straight into Windows or requires `F12`:
 
 1. Open Terminal (`Ctrl + Alt + T`).
-2. Install GRUB to the drive's Master Boot Record (do NOT append a partition number—use `/dev/sda`):
+2. Install GRUB to the drive's Master Boot Record (use the whole disk device `/dev/sda`, not a partition like `sda4`):
    ```bash
    sudo grub-install /dev/sda
    ```
@@ -36,104 +63,50 @@ To make GRUB the master bootloader so you never have to press `F12` on startup:
 
 ---
 
-## 4. Default OS Configuration: The 3 Approaches
+## 5. Setting Default OS: 3 Best-Practice Methods
 
-Open `/etc/default/grub` with root privileges:
+All boot behavior is defined in `/etc/default/grub`:
+
+### Method A: Linux Mint as Default (Fixed)
+Every cold boot highlights Linux Mint. After 5 seconds, Linux Mint launches automatically:
 ```bash
-sudo nano /etc/default/grub
-```
-
-Set common parameters:
-```text
-GRUB_TIMEOUT_STYLE=menu
-GRUB_TIMEOUT=5
-```
-
-Now choose **one** of the three methods below for your default operating system behavior:
-
----
-
-### Method A: Linux Mint as Default (Your Current Preference)
-Every cold boot starts on Linux Mint; if you do nothing for 5 seconds, Linux Mint launches.
-
-In `/etc/default/grub`, set:
-```text
-GRUB_DEFAULT=0
-```
-Save and apply:
-```bash
+sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/' /etc/default/grub
+sudo sed -i 's/^GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=menu/' /etc/default/grub
+sudo sed -i 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=0/' /etc/default/grub
 sudo update-grub
 ```
 
 ---
 
-### Method B: Windows 10 as Default
-Every cold boot highlights Windows 10; if you do nothing for 5 seconds, Windows 10 launches automatically.
-
-1. Query the exact name of the Windows boot entry registered by GRUB:
-   ```bash
-   grep -i -E "menuentry 'windows" /boot/grub/grub.cfg
-   ```
-   *(Usually outputs: `menuentry 'Windows Boot Manager (on /dev/sda2)' ...`)*
-
-2. In `/etc/default/grub`, set `GRUB_DEFAULT` using the exact string copied between the single quotes:
-   ```text
-   GRUB_DEFAULT="Windows Boot Manager (on /dev/sda2)"
-   ```
-   *(Alternatively, if Windows is entry number 3 in your menu, you can use zero-indexed number: `GRUB_DEFAULT=2`)*
-
-3. Save and apply:
-   ```bash
-   sudo update-grub
-   ```
+### Method B: Windows 10 as Default (Fixed)
+Every cold boot highlights Windows 10. After 5 seconds, Windows 10 launches automatically:
+```bash
+WIN_ENTRY=$(grep -i -E "menuentry 'windows" /boot/grub/grub.cfg | head -n1 | cut -d"'" -f2)
+sudo sed -i "s/^GRUB_DEFAULT=.*/GRUB_DEFAULT=\"$WIN_ENTRY\"/" /etc/default/grub
+sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/' /etc/default/grub
+sudo sed -i 's/^GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=menu/' /etc/default/grub
+sudo update-grub
+```
 
 ---
 
 ### Method C: Dynamic "Remember Last Selected OS" (Enterprise Best Practice)
-The machine automatically boots whichever operating system you used last. 
-- If you reboot from Windows 10, it boots Windows 10 automatically.
-- If you reboot from Linux Mint, it boots Linux Mint automatically.
+The machine automatically boots whichever operating system was used last:
+- Rebooting from Windows 10 reboots into Windows 10 automatically.
+- Rebooting from Linux Mint reboots into Linux Mint automatically.
 - You only need to touch the keyboard when you want to switch systems.
-
-In `/etc/default/grub`, configure:
-```text
-GRUB_DEFAULT=saved
-GRUB_SAVEDEFAULT=true
-```
-
-Save the file (`Ctrl + O`, `Enter`), exit (`Ctrl + X`), and apply:
-```bash
-sudo update-grub
-```
-
----
-
-## 5. Instant 1-Line Switching Commands
-
-You do not need to open text editors every time you want to switch the default. You can use these 1-line commands in Linux Mint terminal:
-
-### Switch to Linux Mint Default (1-Line):
-```bash
-sudo sed -i 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=0/' /etc/default/grub && sudo update-grub
-```
-
-### Switch to Windows 10 Default (1-Line):
-```bash
-WIN_ENTRY=$(grep -i -E "menuentry 'windows" /boot/grub/grub.cfg | head -n1 | cut -d"'" -f2)
-sudo sed -i "s/^GRUB_DEFAULT=.*/GRUB_DEFAULT=\"$WIN_ENTRY\"/" /etc/default/grub && sudo update-grub
-```
-
-### Switch to "Remember Last OS" (1-Line):
 ```bash
 sudo sed -i 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=saved/' /etc/default/grub
 grep -q "GRUB_SAVEDEFAULT=true" /etc/default/grub || echo "GRUB_SAVEDEFAULT=true" | sudo tee -a /etc/default/grub
+sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/' /etc/default/grub
+sudo sed -i 's/^GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=menu/' /etc/default/grub
 sudo update-grub
 ```
 
 ---
 
 ## 6. Verification Checklist
-- [ ] Run `sudo update-grub` and verify terminal shows both `Found Linux image` and `Found Windows Boot Manager on /dev/sda2`.
+- [ ] Run `sudo update-grub` and confirm output includes `Found Windows Boot Manager on /dev/sda2`.
 - [ ] Reboot (`sudo reboot`) without pressing `F12`.
-- [ ] Confirm GRUB menu displays with a 5-second countdown timer.
-- [ ] Confirm that when the timer expires, the configured default OS loads cleanly.
+- [ ] Verify the GRUB menu appears with a 5-second countdown.
+- [ ] Verify that the configured default OS loads automatically when the timer reaches 0.

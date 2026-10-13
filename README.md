@@ -10,7 +10,24 @@ A battle-tested operational guide, automation scripts, and Standard Operating Pr
 
 ---
 
-## Workstation Baseline Architecture
+## 1. Getting Started & Downloading the Repository
+
+If you are setting this up on a new machine or following along:
+
+### Method A: Clone via Git (Recommended)
+```bash
+git clone https://github.com/PainWorry/T450_Dual_Boot_Best_Practice.git
+cd T450_Dual_Boot_Best_Practice
+```
+
+### Method B: Download ZIP (No Git Required)
+1. Go to [https://github.com/PainWorry/T450_Dual_Boot_Best_Practice](https://github.com/PainWorry/T450_Dual_Boot_Best_Practice)
+2. Click the green **Code** button -> **Download ZIP** (or [Direct Download Link](https://github.com/PainWorry/T450_Dual_Boot_Best_Practice/archive/refs/heads/main.zip)).
+3. Extract the ZIP file to any folder on your computer (e.g. your Desktop).
+
+---
+
+## 2. Workstation Baseline Architecture
 
 Telemetry captured from `LENOVO 20BUS02F0Z` (ThinkPad T450):
 
@@ -24,52 +41,18 @@ Telemetry captured from `LENOVO 20BUS02F0Z` (ThinkPad T450):
 
 ---
 
-## Problem & Solution Overview
+## 3. Quick Start (The 2-Minute Solution)
 
-```mermaid
-flowchart TD
-    subgraph Problems
-        P1["Dual-Boot Issue: Requires pressing F12 every startup; bypasses OS selection countdown"]
-        P2["Windows 10 Lag: Random 100% CPU lockups & UI freezes from Defender, Opera cache, and DRAM-less SSD churn"]
-    end
+### Step 1: Windows 10 Lag Remediation (Run in Windows 10)
+Inside the extracted/cloned folder:
 
-    subgraph Solutions
-        S1["Reinstall GRUB to /dev/sda MBR with 5s countdown & os-prober; configure default OS toggle"]
-        S2["Execute optimize_t450_performance.ps1: disable SysMain/Search, cap Defender CPU to 20%, purge Opera autostart"]
-    end
+#### Option A: 1-Click Launchers (Zero Typing)
+- Double-click `run_preview_dryrun.bat` to preview actions safely.
+- Right-click `run_apply_optimization.bat` -> **Run as administrator** to apply optimizations.
+- If you ever want to revert, right-click `run_rollback.bat` -> **Run as administrator**.
 
-    P1 --> S1
-    P2 --> S2
-```
-
----
-
-## Quick Start (The 2-Minute Solution)
-
-### 1. Dual-Boot Fix (Execute in Linux Mint)
-Boot into Linux Mint (press `F12` during startup), open Terminal (`Ctrl + Alt + T`), and run:
-
-```bash
-# Install GRUB to drive MBR and enable Windows 10 detection
-sudo grub-install /dev/sda
-echo "GRUB_DISABLE_OS_PROBER=false" | sudo tee -a /etc/default/grub
-
-# Set 5-second countdown menu defaulting to Linux Mint
-sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/' /etc/default/grub
-sudo sed -i 's/^GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=menu/' /etc/default/grub
-sudo sed -i 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=0/' /etc/default/grub
-
-# Apply and reboot
-sudo update-grub
-sudo reboot
-```
-*On reboot, the GRUB menu appears automatically with a 5-second countdown. No F12 required.*
-
----
-
-### 2. Windows 10 Lag Remediation (Execute in Windows 10)
-Open PowerShell as Administrator in the repository folder and run:
-
+#### Option B: Terminal Command (Elevated PowerShell or Command Prompt)
+Navigate into the repository directory and run:
 ```powershell
 # Preview changes without modifying system
 powershell -ExecutionPolicy Bypass -File .\optimize_t450_performance.ps1 -DryRun
@@ -80,22 +63,51 @@ powershell -ExecutionPolicy Bypass -File .\optimize_t450_performance.ps1
 
 ---
 
-## Part 1: Dual-Boot Maintenance & Default OS Switching
+### Step 2: Dual-Boot Bootloader Setup (Run in Linux Mint)
 
-All boot management is controlled in Linux Mint via `/etc/default/grub`.
+#### First: Do You Already See the GRUB Black Screen on Boot?
+If the GNU GRUB selection screen already appears automatically without pressing `F12`:
+1. **Check if Windows 10 is listed**: Press Down Arrow to highlight `Windows Boot Manager` and press Enter. If Windows boots, **you do not need to reinstall GRUB**!
+2. **Check if it counts down**: If it counts down and auto-boots your default OS, **you are 100% finished**.
+3. If it does not count down automatically, simply run:
+   ```bash
+   sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/' /etc/default/grub && sudo update-grub
+   ```
 
-### Method A: Linux Mint as Default (Current Setup)
+#### If GRUB Does Not Appear Automatically (Bypasses to Windows / Requires F12):
+Boot into Linux Mint (press `F12` during startup if needed), open Terminal (`Ctrl + Alt + T`), and run:
+
+```bash
+# 1. Install GRUB to the drive MBR and enable Windows 10 detection
+sudo grub-install /dev/sda
+echo "GRUB_DISABLE_OS_PROBER=false" | sudo tee -a /etc/default/grub
+
+# 2. Configure 5-second countdown menu defaulting to Linux Mint
+sudo sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/' /etc/default/grub
+sudo sed -i 's/^GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=menu/' /etc/default/grub
+sudo sed -i 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=0/' /etc/default/grub
+
+# 3. Apply and reboot
+sudo update-grub
+sudo reboot
+```
+
+---
+
+## 4. Default OS Switching: The 3 Methods (In Linux Mint)
+
+All boot behavior is defined in `/etc/default/grub`:
+
+### Method A: Linux Mint as Default (Fixed)
 Every cold boot starts with Linux Mint highlighted. After 5 seconds without user interaction, Linux Mint boots automatically.
-
 ```bash
 sudo sed -i 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=0/' /etc/default/grub && sudo update-grub
 ```
 
 ---
 
-### Method B: Windows 10 as Default
+### Method B: Windows 10 as Default (Fixed)
 Every cold boot highlights Windows 10. After 5 seconds without user interaction, Windows 10 boots automatically.
-
 ```bash
 WIN_ENTRY=$(grep -i -E "menuentry 'windows" /boot/grub/grub.cfg | head -n1 | cut -d"'" -f2)
 sudo sed -i "s/^GRUB_DEFAULT=.*/GRUB_DEFAULT=\"$WIN_ENTRY\"/" /etc/default/grub && sudo update-grub
@@ -108,7 +120,6 @@ The computer automatically boots whichever operating system was used last:
 - Rebooting from Windows 10 reboots into Windows 10 automatically.
 - Rebooting from Linux Mint reboots into Linux Mint automatically.
 - You only need to touch the keyboard when you intentionally want to switch OS.
-
 ```bash
 sudo sed -i 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=saved/' /etc/default/grub
 grep -q "GRUB_SAVEDEFAULT=true" /etc/default/grub || echo "GRUB_SAVEDEFAULT=true" | sudo tee -a /etc/default/grub
@@ -117,35 +128,32 @@ sudo update-grub
 
 ---
 
-## Part 2: Windows 10 Performance Optimization (Lag Remediation)
+## 5. Technical Breakdown of Windows 10 Performance Fixes
 
 ### Root Cause Analysis
-
 1. **DRAM-less Kingston A400 SSD Contention**:
    The Phison S11 SSD controller lacks onboard DRAM cache. Windows background services (`SysMain` and `WSearch`) continuously write cache blocks to disk. During sustained random 4K write bursts, the controller's internal write buffer exhausts, spiking disk response times up to 1000ms+ and freezing the Windows GUI thread.
 2. **Antimalware Service Executable (`MsMpEng.exe`)**:
    Windows Defender scans file writes in real time. Because Opera autostarts (`--autostart`) and continuously modifies cache files, Defender intercepts and scans these writes, saturating both physical cores of the i5-5300U processor.
 
 ### What `optimize_t450_performance.ps1` Does
-
 - **Disables `SysMain` (Superfetch)**: Eliminates continuous background cache writes to the DRAM-less SSD.
 - **Disables `WSearch` (Windows Search Indexer)**: Eliminates background disk indexing overhead.
 - **Disables `DiagTrack`**: Stops background telemetry and diagnostic tracking.
 - **Enforces NTFS TRIM**: Runs `fsutil behavior set DisableDeleteNotify 0` to preserve SSD flash endurance and garbage collection.
-- **Caps Windows Defender CPU Ceiling to 20%**: Runs `Set-MpPreference -ScanAvgCPUMultithreaded 20` so background scans never dominate the dual-core CPU.
+- **Caps Windows Defender CPU Ceiling to 20%**: Runs `Set-MpPreference -ScanAvgCPULoadFactor 20` so background scans never dominate the dual-core CPU.
 - **Adds Defender Exclusions**: Excludes `MsMpEng.exe` (stops self-scanning) and Opera browser cache directories.
 - **Purges Opera Autostart**: Deletes the `Opera Air Stable` startup entry from `HKCU:\Software\Microsoft\Windows\CurrentVersion\Run`.
 
 ### Rollback Procedure
 To revert all services, Defender preferences, and startup configurations back to factory Windows defaults:
-
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\rollback_t450_performance.ps1
 ```
 
 ---
 
-## Part 3: Hardware & Thermal Throttling Triage
+## 6. Hardware & Thermal Throttling Triage
 
 A notorious failure mode on the ThinkPad T450 is **BD PROCHOT throttling**, where the CPU locks permanently to **0.79 GHz (800 MHz)**:
 
@@ -163,14 +171,18 @@ Get-CimInstance Win32_Processor | Select-Object Name, MaxClockSpeed, CurrentCloc
 
 ---
 
-## Repository Index
+## 7. Repository Index
 
+All paths are relative to repository root:
 ```text
 .
 ├── README.md                          # Master architecture guide and operations manual
 ├── LINUX_MINT_GRUB_SOP.md             # Dedicated Linux Mint GRUB configuration manual
 ├── optimize_t450_performance.ps1      # Windows 10 automated debloat & lag remediation script
 ├── rollback_t450_performance.ps1      # 1-Click rollback script to restore Windows defaults
+├── run_preview_dryrun.bat             # 1-Click launcher for dry-run preview
+├── run_apply_optimization.bat         # 1-Click launcher for applying optimizations
+├── run_rollback.bat                   # 1-Click launcher for reverting changes
 └── SKILL.md                           # Antigravity custom skill specification
 ```
 

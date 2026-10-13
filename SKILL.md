@@ -18,7 +18,7 @@ This skill codifies enterprise operational standards for diagnosing, tuning, and
 - **Remediation**:
   - Throttle Windows Defender scan CPU ceiling to 20%:
     ```powershell
-    Set-MpPreference -ScanAvgCPUMultithreaded 20
+    Set-MpPreference -ScanAvgCPULoadFactor 20
     ```
   - Exclude `MsMpEng.exe` from scanning itself.
   - Exclude high-frequency browser cache folders from real-time inspection.
